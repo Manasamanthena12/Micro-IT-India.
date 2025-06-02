@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Game 🧠🎮</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z'/></svg>" type="image/svg+xml">
+    <style>
+        body {
+            background-image: url('/static/images/background.jpg');
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .option-btn {
+            min-width: 120px;
+            transition: transform 0.3s ease;
+        }
+        .option-btn:hover {
+            transform: scale(1.05);
+        }
+        .option-btn.selected {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .animate-slide-in {
+            animation: slideIn 0.5s ease;
+        }
+        .animate-feedback-correct {
+            animation: flashGreen 0.5s ease;
+        }
+        .animate-feedback-incorrect {
+            animation: shake 0.5s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes flashGreen {
+            0% { background-color: #10b981; }
+            50% { background-color: transparent; }
+            100% { background-color: #10b981; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #e5e7eb;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 bg-opacity-50">
+    <div class="container mx-auto p-6 bg-white rounded-lg shadow-lg max-w-2xl bg-opacity-80">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">{{ session['category'] }} 🧩</h1>
+        <div class="progress-bar mb-4">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+        <p id="timer" class="text-center text-gray-600 mb-4">Time: 30s ⏳</p>
+        <div id="question-container" class="mb-6 animate-slide-in">
+            <h2 id="question" class="text-lg font-medium text-gray-700"></h2>
+            <div id="options" class="mt-4 flex flex-wrap gap-4 justify-center"></div>
+        </div>
+        <p id="progress" class="text-center text-gray-600 mb-4"></p>
+        <div id="feedback" class="text-center mb-4"></div>
+        <div class="flex justify-between">
+            <button id="prevBtn" class="bg-gray-500 text-white p-2 rounded-md hover:bg-gray-600 transition duration-300">Previous ⬅️</button>
+            <button id="skipBtn" class="bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 transition duration-300">Skip ➡️</button>
+            <button id="submitBtn" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition duration-300">Submit ✅</button>
+            <button id="nextBtn" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition duration-300 hidden">Next ➡️</button>
+            <button id="finishBtn" class="bg-green-600 text-white p-2 rounded-md hover:bg-green-700 transition duration-300">Finish Quiz 🏁</button>
+        </div>
+    </div>
+    <script>
+        let currentQuestionIndex = 0;
+        let timerInterval;
+        const TIME_LIMIT = 30; // 30 seconds per question
+
+        function startTimer() {
+            let timeLeft = TIME_LIMIT;
+            document.getElementById('timer').textContent = `Time: ${timeLeft}s ⏳`;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = `Time: ${timeLeft}s ⏳`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    submitAnswer('');
+                }
+            }, 1000);
+        }
+
+        function updateProgressBar(index, total) {
+            const percentage = (index / total) * 100;
+            document.getElementById('progress-bar-fill').style.width = `${percentage}%`;
+        }
+
+        function loadQuestion() {
+            fetch('/get_question')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load question');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.finished) {
+                        window.location.href = '/result';
+                        return;
+                    }
+                    currentQuestionIndex = data.index - 1;
+                    document.getElementById('question').textContent = data.question;
+                    document.getElementById('progress').textContent = `Question ${data.index} of ${data.total} 📝`;
+                    updateProgressBar(data.index, data.total);
+                    const optionsDiv = document.getElementById('options');
+                    optionsDiv.innerHTML = '';
+                    data.options.forEach(option => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `option-btn p-2 border rounded-md ${data.user_answer === option ? 'selected' : ''}`;
+                        btn.textContent = option;
+                        btn.onclick = () => {
+                            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+                            btn.classList.add('selected');
+                        };
+                        optionsDiv.appendChild(btn);
+                    });
+                    document.getElementById('prevBtn').disabled = currentQuestionIndex === 0;
+                    document.getElementById('nextBtn').classList.add('hidden');
+                    document.getElementById('submitBtn').classList.remove('hidden');
+                    document.getElementById('feedback').textContent = '';
+                    startTimer();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading question: ' + error.message);
+                });
+        }
+
+        function submitAnswer(answer) {
+            clearInterval(timerInterval);
+            fetch('/submit_answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ 'answer': answer })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.finished) {
+                    window.location.href = '/result';
+                    return;
+                }
+                document.getElementById('feedback').textContent = answer ? (data.correct ? 'Correct! ✅' : 'Incorrect! ❌') : 'Time’s up! ⏰';
+                document.getElementById('feedback').className = `text-center mb-4 ${data.correct ? 'text-green-600 animate-feedback-correct' : 'text-red-600 animate-feedback-incorrect'}`;
+                document.getElementById('submitBtn').classList.add('hidden');
+                document.getElementById('nextBtn').classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error submitting answer: ' + error.message);
+            });
+        }
+
+        document.getElementById('submitBtn').addEventListener('click', () => {
+            const selected = document.querySelector('.option-btn.selected');
+            submitAnswer(selected ? selected.textContent : '');
+        });
+
+        document.getElementById('skipBtn').addEventListener('click', () => {
+            submitAnswer('');
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            fetch('/set_question_index', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ 'index': currentQuestionIndex })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) loadQuestion();
+            });
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            fetch('/set_question_index', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ 'index': currentQuestionIndex + 2 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) loadQuestion();
+            });
+        });
+
+        document.getElementById('finishBtn').addEventListener('click', () => {
+            fetch('/finish_quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: ''
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect) window.location.href = data.redirect;
+            });
+        });
+
+        // Load first question
+        loadQuestion();
+    </script>
+</body>
+</html>

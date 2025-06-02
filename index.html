@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Game 🧠🎮</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z'/></svg>" type="image/svg+xml">
+    <style>
+        body {
+            background-image: url('/static/images/background.jpg');
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 bg-opacity-50">
+    <div class="container mx-auto p-6 bg-white rounded-lg shadow-lg max-w-md bg-opacity-80">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Quiz Game 🧠🎮</h1>
+        <form id="quizForm" action="/start_quiz" method="POST" class="space-y-4">
+            <div>
+                <label for="category" class="block text-sm font-medium text-gray-700">Select Category 📚</label>
+                <select id="category" name="category" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" required>
+                    {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="subCategoryDiv" class="hidden">
+                <label for="sub_category" class="block text-sm font-medium text-gray-700">Select Sub-Category 💻</label>
+                <select id="sub_category" name="sub_category" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                    <option value="Programming-Python">Python</option>
+                    <option value="Programming-JavaScript">JavaScript</option>
+                    <option value="Programming-C">C</option>
+                    <option value="Programming-C++">C++</option>
+                    <option value="Programming-Java">Java</option>
+                    <option value="Programming-HTML">HTML</option>
+                    <option value="Programming-CSS">CSS</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition duration-300">Start Quiz 🚀</button>
+        </form>
+    </div>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
